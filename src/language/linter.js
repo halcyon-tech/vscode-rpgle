@@ -114,6 +114,7 @@ module.exports = class Linter {
     let continuedStatement = false;
     let isLineComment = false;
     let skipIndentCheck = false;
+    let deferredIndent = false;
 
     let currentStatement = ``;
     let opcode;
@@ -907,6 +908,13 @@ module.exports = class Linter {
         
         // Next, check for indentation errors
 
+        // Check to see if we are ending a multi-line conditional 
+        // and now need to increase the expected indent level
+        if (!continuedStatement && deferredIndent) {
+          expectedIndent += indent;
+          deferredIndent = false;
+        }
+
         if (indentEnabled && skipIndentCheck === false) {
           pieces = upperLine.split(` `).filter(piece => piece !== ``);
           opcode = pieces[0];
@@ -950,6 +958,11 @@ module.exports = class Linter {
             else if (opcode === `ON-EXIT`) {
               expectedIndent += indent; 
               inOnExit = true;
+            }             
+            // If we have a multi-line conditional, we don't want to increase
+            // the required indent until we reach the end of the condition.
+            else if (continuedStatement) {
+              deferredIndent = true;
             } else {
               expectedIndent += indent; 
             }
